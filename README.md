@@ -7,13 +7,13 @@ Go生成图形验证码，带噪点，干扰线，正弦干扰线；支持生成
 安装前请确认你的电脑上go环境已安装好，可以使用以下命令
 
 ```go
-go get -u github.com/vcqr/captcha
+go get -u github.com/admpub/captcha
 ```
 
 引用包到你的项目中
 
 ```go
-import "github.com/vcqr/captcha"
+import "github.com/admpub/captcha"
 ```
 
 ## Example
@@ -23,7 +23,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/vcqr/captcha"
+	"github.com/admpub/captcha"
 	"image/png"
 	"log"
 	"net/http"
@@ -56,6 +56,6 @@ func main() {
 
 ### 输出图片举例
 
-![exp0](https://github.com/vcqr/captcha/blob/master/example/exp0.png)
+![exp0](https://github.com/admpub/captcha/blob/master/example/exp0.png)
 
-![exp1](https://github.com/vcqr/captcha/blob/master/example/exp1.png)
+![exp1](https://github.com/admpub/captcha/blob/master/example/exp1.png)

@@ -2,10 +2,6 @@ package captcha
 
 import (
 	"crypto/rand"
-	"fmt"
-	"github.com/golang/freetype"
-	"github.com/llgcode/draw2d"
-	"github.com/llgcode/draw2d/draw2dimg"
 	"image"
 	"image/color"
 	"io/ioutil"
@@ -14,11 +10,15 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
+
+	"github.com/golang/freetype"
+	"github.com/llgcode/draw2d"
+	"github.com/llgcode/draw2d/draw2dimg"
 )
 
 const (
-	// chars           = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	chars           = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	// chars        = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	chars           = "123456789ABCDEFGHIJKLMNPQRSTUVWXYZ"
 	operator        = "+-*/"
 	defaultLen      = 4
 	defaultFontSize = 25
@@ -35,11 +35,51 @@ type Captcha struct {
 	Dpi                int
 	FontPath, FontName string
 	mode               int
+	chars              string
+	operator           string
+	point              bool
+	line               bool
+	sinLine            bool
 }
 
 // 实例化验证码
 func NewCaptcha(w, h, CodeLen int) *Captcha {
-	return &Captcha{W: w, H: h, CodeLen: CodeLen}
+	return &Captcha{
+		W:        w,
+		H:        h,
+		CodeLen:  CodeLen,
+		chars:    chars,
+		operator: operator,
+		point:    true,
+		line:     true,
+		sinLine:  true,
+	}
+}
+
+// 设置字符集合
+func (captcha *Captcha) SetChars(chars string) *Captcha {
+	captcha.chars = chars
+	return captcha
+}
+
+func (captcha *Captcha) SetOperator(operator string) *Captcha {
+	captcha.operator = operator
+	return captcha
+}
+
+func (captcha *Captcha) UsePoint(on bool) *Captcha {
+	captcha.point = on
+	return captcha
+}
+
+func (captcha *Captcha) UseLine(on bool) *Captcha {
+	captcha.line = on
+	return captcha
+}
+
+func (captcha *Captcha) UseSinLine(on bool) *Captcha {
+	captcha.sinLine = on
+	return captcha
 }
 
 // 输出
@@ -73,7 +113,7 @@ func (captcha *Captcha) getRandCode() string {
 		captcha.CodeLen = defaultLen
 	}
 
-	var code = ""
+	var code string
 	for l := 0; l < captcha.CodeLen; l++ {
 		charsPos := captcha.RangeRand(0, int64(len(chars)-1))
 		code += string(chars[charsPos])
@@ -139,14 +179,18 @@ func (captcha *Captcha) doImage(dest *image.RGBA) (string, *image.RGBA) {
 	defer gc.FillStroke()
 
 	captcha.setFont(gc)
-	captcha.doPoint(gc)
-	captcha.doLine(gc)
-	captcha.doSinLine(gc)
-
+	if captcha.point {
+		captcha.doPoint(gc)
+	}
+	if captcha.line {
+		captcha.doLine(gc)
+	}
+	if captcha.sinLine {
+		captcha.doSinLine(gc)
+	}
 	var codeStr string
 	if captcha.mode == 1 {
 		ret, formula := captcha.getFormulaMixData()
-		fmt.Println(formula)
 		codeStr = ret
 		captcha.doFormula(gc, formula)
 	} else {
