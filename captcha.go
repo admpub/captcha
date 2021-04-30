@@ -10,8 +10,10 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/golang/freetype"
+	"github.com/golang/freetype/truetype"
 	"github.com/llgcode/draw2d"
 	"github.com/llgcode/draw2d/draw2dimg"
 )
@@ -40,6 +42,8 @@ type Captcha struct {
 	point              bool
 	line               bool
 	sinLine            bool
+	fontCache          *truetype.Font
+	once               sync.Once
 }
 
 // 实例化验证码
@@ -48,6 +52,8 @@ func NewCaptcha(w, h, CodeLen int) *Captcha {
 		W:        w,
 		H:        h,
 		CodeLen:  CodeLen,
+		FontSize: defaultFontSize,
+		Dpi:      defaultDpi,
 		chars:    chars,
 		operator: operator,
 		point:    true,
@@ -67,6 +73,11 @@ func (captcha *Captcha) SetOperator(operator string) *Captcha {
 	return captcha
 }
 
+func (captcha *Captcha) SetDpi(dpi int) *Captcha {
+	captcha.Dpi = dpi
+	return captcha
+}
+
 func (captcha *Captcha) UsePoint(on bool) *Captcha {
 	captcha.point = on
 	return captcha
@@ -80,6 +91,26 @@ func (captcha *Captcha) UseLine(on bool) *Captcha {
 func (captcha *Captcha) UseSinLine(on bool) *Captcha {
 	captcha.sinLine = on
 	return captcha
+}
+
+//设置模式
+func (captcha *Captcha) SetMode(mode int) {
+	captcha.mode = mode
+}
+
+// 设置字体路径
+func (captcha *Captcha) SetFontPath(FontPath string) {
+	captcha.FontPath = FontPath
+}
+
+// 设置字体名称
+func (captcha *Captcha) SetFontName(FontName string) {
+	captcha.FontName = FontName
+}
+
+// 设置字体大小
+func (captcha *Captcha) SetFontSize(fontSize float64) {
+	captcha.FontSize = fontSize
 }
 
 // 输出
@@ -98,13 +129,11 @@ func (captcha *Captcha) RangeRand(min, max int64) int64 {
 		f64Min := math.Abs(float64(min))
 		i64Min := int64(f64Min)
 		result, _ := rand.Int(rand.Reader, big.NewInt(max+1+i64Min))
-
 		return result.Int64() - i64Min
-	} else {
-		result, _ := rand.Int(rand.Reader, big.NewInt(max-min+1))
-
-		return min + result.Int64()
 	}
+
+	result, _ := rand.Int(rand.Reader, big.NewInt(max-min+1))
+	return min + result.Int64()
 }
 
 // 随机字符串
@@ -312,33 +341,12 @@ func (captcha *Captcha) doSinLine(gc *draw2dimg.GraphicContext) {
 	gc.Stroke()
 }
 
-//设置模式
-func (captcha *Captcha) SetMode(mode int) {
-	captcha.mode = mode
-}
-
-// 设置字体路径
-func (captcha *Captcha) SetFontPath(FontPath string) {
-	captcha.FontPath = FontPath
-}
-
-// 设置字体名称
-func (captcha *Captcha) SetFontName(FontName string) {
-	captcha.FontName = FontName
-}
-
-// 设置字体大小
-func (captcha *Captcha) SetFontSize(fontSize float64) {
-	captcha.FontSize = fontSize
-}
-
-//设置相关字体
-func (captcha *Captcha) setFont(gc *draw2dimg.GraphicContext) {
-	if captcha.FontPath == "" {
+func (captcha *Captcha) initFont() {
+	if len(captcha.FontPath) == 0 {
 		panic("the font path is empty!")
 	}
 
-	if captcha.FontName == "" {
+	if len(captcha.FontName) == 0 {
 		panic("the font name is empty!")
 	}
 
@@ -351,9 +359,21 @@ func (captcha *Captcha) setFont(gc *draw2dimg.GraphicContext) {
 		return
 	}
 
-	font, err := freetype.ParseFont(fontBytes)
+	captcha.fontCache, err = freetype.ParseFont(fontBytes)
 	if err != nil {
 		log.Println(err)
+	}
+}
+
+func (captcha *Captcha) getFont() *truetype.Font {
+	captcha.once.Do(captcha.initFont)
+	return captcha.fontCache
+}
+
+//设置相关字体
+func (captcha *Captcha) setFont(gc *draw2dimg.GraphicContext) {
+	font := captcha.getFont()
+	if font == nil {
 		return
 	}
 
